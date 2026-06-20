@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -110,6 +110,14 @@ export class WorkOrdersService {
       throw new NotFoundException();
     }
 
+    if (dto.version !== undefined && dto.version !== workOrder.version) {
+      throw new ConflictException({
+        code: 'FLX_CONCURRENT_UPDATE',
+        message:
+          'A ordem de serviço foi alterada por outro usuário.',
+      });
+    }
+
 
     if (dto.status) {
       this.validateStatusTransition(
@@ -134,7 +142,10 @@ export class WorkOrdersService {
         priority: dto.priority,
         assigneeId: dto.assigneeId,
         resolutionNotes: dto.resolutionNotes,
-    
+
+        version: {
+          increment: 1,
+        },
       },
     });
   }
@@ -162,10 +173,7 @@ export class WorkOrdersService {
     }
   }
 
-  private validateStatusTransition(
-    currentStatus: WorkOrderStatus,
-    nextStatus: WorkOrderStatus,
-  ) {
+  private validateStatusTransition(currentStatus: WorkOrderStatus, nextStatus: WorkOrderStatus) {
     const allowedTransitions =
       ALLOWED_TRANSITIONS[currentStatus];
   
