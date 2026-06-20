@@ -32,6 +32,7 @@ export class WorkOrdersController {
   ) {
     return this.workOrdersService.create(dto, req.user);
   }
+  
 
   @Get()
   findAll(
@@ -39,6 +40,14 @@ export class WorkOrdersController {
     @Request() req: any,
   ) {
     return this.workOrdersService.findAll(query, req.user);
+  }
+
+  @Get(':id/history')
+  history(
+    @Param('id') id: string,
+    @Request() req: any,
+  ) {
+    return this.workOrdersService.history(id, req.user);
   }
 
   @Get(':id')
@@ -58,11 +67,5 @@ export class WorkOrdersController {
     return this.workOrdersService.update(id, dto, req.user);
   }
 
-  // @Get(':id/history')
-  // history(
-  //   @Param('id') id: string,
-  //   @Request() req: any,
-  // ) {
-  //   return this.workOrdersService.history(id, req.user);
-  // }
+ 
 }

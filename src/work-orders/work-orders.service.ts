@@ -94,11 +94,7 @@ export class WorkOrdersService {
     });
   }
 
-  async update(
-    id: string,
-    dto: UpdateWorkOrderDto,
-    user: any,
-  ) {
+  async update(id: string, dto: UpdateWorkOrderDto,user: any) {
     const workOrder = await this.prisma.workOrder.findFirst({
       where: {
         id,
@@ -124,17 +120,59 @@ export class WorkOrdersService {
       );
     }
   
-    return this.prisma.workOrder.update({
+    return this.prisma.$transaction(async (tx) => {
+      const updatedWorkOrder = await tx.workOrder.update({
+        where: {
+          id,
+        },
+    
+        data: {
+          status: dto.status,
+          priority: dto.priority,
+          assigneeId: dto.assigneeId,
+          resolutionNotes: dto.resolutionNotes,
+    
+          version: {
+            increment: 1,
+          },
+        },
+      });
+    
+      if (dto.status && dto.status !== workOrder.status) {
+        await tx.workOrderEvent.create({
+          data: {
+            workOrderId: workOrder.id,
+            actorId: user.id,
+    
+            fromStatus: workOrder.status,
+            toStatus: dto.status,
+          },
+        });
+      }
+    
+      return updatedWorkOrder;
+    });
+  }
+
+  async history(id: string, user: any) {
+    const workOrder = await this.prisma.workOrder.findFirst({
       where: {
         id,
+        ...this.buildScope(user),
+      },
+    });
+  
+    if (!workOrder) {
+      throw new NotFoundException();
+    }
+  
+    return this.prisma.workOrderEvent.findMany({
+      where: {
+        workOrderId: id,
       },
   
-      data: {
-        status: dto.status,
-        priority: dto.priority,
-        assigneeId: dto.assigneeId,
-        resolutionNotes: dto.resolutionNotes,
-    
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
