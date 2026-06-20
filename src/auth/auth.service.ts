@@ -1,26 +1,74 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+
+import * as argon2 from 'argon2';
+
+import { Role, User } from '@prisma/client';
+
+import { UsersService } from '../users/users.service';
+
 import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
+  constructor(private readonly jwtService: JwtService, private readonly usersService: UsersService){}
+
+  async register(data: RegisterDto){
+    const existsUser = await this.usersService.findByEmail(data.email)
+
+    if(existsUser) throw new UnauthorizedException('Email já existe!')
+
+    const requiresTeam =
+    data.role === Role.technician ||
+    data.role === Role.supervisor;
+
+    if(requiresTeam && !data.teamId) throw new BadRequestException("TimeId é necessario apra o supervisor e técnico")
+    
+    const passwordHash = await argon2.hash(data.password)
+
+    const user = await this.usersService.create({
+        email: data.email,
+        passwordHash,
+        name: data.name,
+        role: data.role,
+        teamId: data.teamId,
+    })
+
+    return this.generateToken(user);
   }
 
-  findAll() {
-    return `This action returns all auth`;
+  async validateUser(email: string, password: string,): Promise<User> {
+    const user = await this.usersService.findByEmail(email)
+
+    if(!user) throw new UnauthorizedException("Credenciais inválidas")
+
+    const verifyPassword = await argon2.verify(user.passwordHash, password)
+
+    if(!verifyPassword) throw new UnauthorizedException("Credenciais inválidas")
+
+    return user
+
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
+  private async generateToken(user: User) {
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      teamId: user.teamId,
+    };
+  
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+    };
   }
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
+  async login(dto: CreateAuthDto) {
+    const user = await this.validateUser(
+      dto.email,
+      dto.password,
+    );
+  
+    return this.generateToken(user);
   }
-
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
-  }
-}
+}   
