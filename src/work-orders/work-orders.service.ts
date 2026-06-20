@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -105,6 +105,17 @@ export class WorkOrdersService {
   
     if (!workOrder) {
       throw new NotFoundException();
+    }
+  
+    if (
+      dto.version !== undefined &&
+      dto.version !== workOrder.version
+    ) {
+      throw new ConflictException({
+        code: 'FLX_CONCURRENT_UPDATE',
+        message:
+          'A ordem de serviço foi alterada por outro usuário.',
+      });
     }
 
 
