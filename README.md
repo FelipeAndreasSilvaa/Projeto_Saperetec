@@ -1,98 +1,280 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# FieldOps Lite API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API desenvolvida como parte do desafio técnico da FieldOps para gerenciamento de ordens de serviço.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+O objetivo do projeto é simular um cenário real de manutenção em campo, com diferentes perfis de acesso, regras de negócio, auditoria de eventos, concorrência otimista e integração via webhook.
 
-## Description
+## Tecnologias utilizadas
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+* Node.js
+* NestJS
+* TypeScript
+* PostgreSQL
+* Prisma ORM
+* JWT
+* Jest
+* Docker (opcional)
 
-## Project setup
+## Funcionalidades implementadas
 
-```bash
-$ pnpm install
+### Autenticação
+
+* Login com JWT
+* Registro de usuários
+* Claims do token: `sub`, `role` e `teamId`
+
+### Controle de acesso
+
+Cada perfil possui escopos específicos:
+
+* **technician:** acessa apenas ordens atribuídas a ele dentro da sua equipe
+* **supervisor:** acessa todas as ordens da sua equipe
+* **admin:** acesso global
+
+### Ordens de serviço
+
+* Criação de ordens de serviço
+* Listagem paginada com filtros
+* Detalhamento por ID
+* Atualização de status
+* Histórico de auditoria
+
+### Regras de negócio
+
+* Fluxo de status:
+
+```text
+open → in_progress → done
+in_progress → open
 ```
 
-## Compile and run the project
+* `assigneeId` obrigatório para iniciar uma ordem
+* Apenas técnicos podem ser responsáveis por ordens
+* Técnico deve pertencer à mesma equipe da OS
+* `resolutionNotes` obrigatório para concluir uma ordem
+* Ordens com prioridade `high` só podem ser concluídas por `supervisor` ou `admin`
+* Retorno para `open` permitido apenas quando houver itens pendentes no checklist
 
-```bash
-# development
-$ pnpm run start
+### Auditoria
 
-# watch mode
-$ pnpm run start:dev
+Toda mudança de status gera um evento em `flx_work_order_events`.
 
-# production mode
-$ pnpm run start:prod
+### Concorrência otimista
+
+Atualizações de status exigem o envio da propriedade `version`.
+
+Caso a versão enviada esteja desatualizada, a API retorna:
+
+```http
+409 Conflict
 ```
 
-## Run tests
+com o código:
 
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+```text
+FLX_CONCURRENT_UPDATE
 ```
 
-## Deployment
+### Webhooks
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+Após uma mudança de status bem-sucedida, a API envia um webhook contendo:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+* `workOrderId`
+* `fromStatus`
+* `toStatus`
+* `actorId`
+* `occurredAt`
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+A assinatura é gerada utilizando HMAC-SHA256.
+
+## Estrutura do projeto
+
+```text
+src/
+├── auth/
+├── users/
+├── work-orders/
+├── webhook/
+├── prisma/
+├── common/
+└── health/
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Configuração do ambiente
 
-## Resources
+### Pré-requisitos
 
-Check out a few resources that may come in handy when working with NestJS:
+* Node.js 20+
+* PostgreSQL 15+
+* pnpm
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Instalação
 
-## Support
+Clone o repositório:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+git clone <url-do-repositorio>
 
-## Stay in touch
+cd api
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Instale as dependências:
 
-## License
+```bash
+pnpm install
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Crie o arquivo `.env`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/fieldops"
+
+JWT_SECRET="super-secret-key"
+JWT_EXPIRES_IN="1d"
+
+WEBHOOK_URL=""
+WEBHOOK_SECRET=""
+```
+
+Execute as migrations:
+
+```bash
+npx prisma migrate deploy
+```
+
+Execute o seed:
+
+```bash
+npx prisma db seed
+```
+
+Inicie a aplicação:
+
+```bash
+pnpm run start:dev
+```
+
+A API estará disponível em:
+
+```text
+http://localhost:3000
+```
+
+## Banco de testes
+
+Os testes utilizam um banco dedicado.
+
+Crie um arquivo `.env.test`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/fieldops_test"
+
+JWT_SECRET="super-secret-key"
+JWT_EXPIRES_IN="1d"
+
+WEBHOOK_URL=""
+WEBHOOK_SECRET=""
+```
+
+Execute as migrations:
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/fieldops_test" npx prisma migrate deploy
+```
+
+Execute o seed:
+
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/fieldops_test" npx prisma db seed
+```
+
+## Usuários de seed
+
+| Email                                                           | Senha       | Role       | Team       |
+| --------------------------------------------------------------- | ----------- | ---------- | ---------- |
+| [tech-a@fieldops.eval](mailto:tech-a@fieldops.eval)             | password123 | technician | team-alpha |
+| [tech-b@fieldops.eval](mailto:tech-b@fieldops.eval)             | password123 | technician | team-beta  |
+| [supervisor-a@fieldops.eval](mailto:supervisor-a@fieldops.eval) | password123 | supervisor | team-alpha |
+| [admin@fieldops.eval](mailto:admin@fieldops.eval)               | password123 | admin      | —          |
+
+## Executando os testes
+
+```bash
+pnpm run test:e2e
+```
+
+Atualmente o projeto possui testes cobrindo:
+
+* autenticação
+* criação de ordens
+* transições de status
+* validações de negócio
+* concorrência otimista
+* histórico de auditoria
+
+## Endpoints principais
+
+### Auth
+
+```http
+POST /auth/register
+POST /auth/login
+```
+
+### Work Orders
+
+```http
+POST   /work-orders
+GET    /work-orders
+GET    /work-orders/:id
+PATCH  /work-orders/:id
+GET    /work-orders/:id/history
+```
+
+### Health Check
+
+```http
+GET /health
+```
+
+## Decisões arquiteturais (ADRs)
+
+### ADR 001 — Concorrência otimista
+
+Foi adotado controle de concorrência baseado em versionamento.
+
+Essa abordagem evita bloqueios no banco de dados e simplifica o controle de conflitos entre usuários simultâneos.
+
+### ADR 002 — Escopo por papel no backend
+
+As regras de acesso são aplicadas no backend por meio do método `buildScope()`.
+
+Essa decisão evita que restrições dependam exclusivamente do frontend.
+
+### ADR 003 — Auditoria desacoplada
+
+O histórico de mudanças é armazenado em uma tabela específica (`flx_work_order_events`).
+
+Isso permite rastreabilidade sem alterar a estrutura principal da ordem de serviço.
+
+## Limitações conhecidas
+
+* O endpoint `DELETE /work-orders/:id` não foi implementado.
+* O webhook ainda não possui mecanismo de reenvio automático.
+* O parâmetro `sort` suporta apenas ordenação por data de criação.
+* Não há interface frontend nesta entrega.
+
+## Próximos passos
+
+* Implementar frontend em React
+* Adicionar documentação OpenAPI
+* Configurar CI/CD com GitHub Actions
+* Adicionar Docker Compose
+* Implementar retentativas para webhooks
+* Criar monitoramento e métricas
+
+## Uso de IA
+
+O projeto foi desenvolvido com apoio de ferramentas de assistência por IA para geração de boilerplate, revisão de código e discussão de decisões arquiteturais.
+
+Todas as sugestões foram revisadas, adaptadas e validadas manualmente.
