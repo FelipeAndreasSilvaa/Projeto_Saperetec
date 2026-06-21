@@ -71,4 +71,20 @@ export class AuthService {
   
     return this.generateToken(user);
   }
+
+  async me(userId: string) {
+    const user = await this.usersService.findById(userId);
+  
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+  
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      teamId: user.teamId,
+    };
+  }
 }   

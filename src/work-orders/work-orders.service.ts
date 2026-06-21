@@ -218,9 +218,18 @@ export class WorkOrdersService {
       where: {
         workOrderId: id,
       },
-  
+    
       orderBy: {
         createdAt: 'desc',
+      },
+    
+      include: {
+        actor: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   }
