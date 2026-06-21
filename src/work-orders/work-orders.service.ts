@@ -61,6 +61,14 @@ export class WorkOrdersService {
         },
         include: {
           checklistItems: true,
+        
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
         },
       }),
   
@@ -90,8 +98,26 @@ export class WorkOrdersService {
   
       include: {
         checklistItems: true,
-        events: true,
-      },
+      
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      
+        events: {
+          include: {
+            actor: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      }
     });
   }
 
