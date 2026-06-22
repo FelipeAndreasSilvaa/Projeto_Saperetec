@@ -17,6 +17,11 @@ Obs: AS VARIÁVEIS GLOBAIS QUE ESTÃO DENTRO DOS ARQUIVOS .ENV SÃO SÓ PARA FIM
 * Jest
 * Docker (opcional)
 
+## Por que usar nestjs
+
+O NestJS foi escolhido por oferecer uma arquitetura modular e escalável, ideal para aplicações com regras de negócio complexas. Sua integração nativa com TypeScript garante tipagem consistente em toda a aplicação. Recursos como injeção de dependências, validação por DTOs e suporte a JWT simplificam a implementação de autenticação e autorização. Além disso, a integração com Prisma facilita o acesso ao banco de dados de forma segura e performática. Essas características tornam o NestJS uma escolha adequada para um sistema com controle de acesso, auditoria e integrações externas.
+
+
 ## Funcionalidades implementadas
 
 ### Autenticação
