@@ -64,4 +64,8 @@ import {
       'priority:asc',
     ])
     sort?: string;
+
+    @IsOptional()
+    @IsString()
+    search?: string;
   }

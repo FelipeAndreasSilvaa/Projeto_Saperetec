@@ -3,7 +3,7 @@ import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ListWorkOrdersDto } from './dto/list-work-orders.dto';
-import { WorkOrderStatus, Priority, Role, WorkOrder } from '@prisma/client';
+import { WorkOrderStatus, Priority, Role, WorkOrder, Prisma,} from '@prisma/client';
 import { WebhookService } from 'src/webhook/webhook.service';
 
 const ALLOWED_TRANSITIONS: Record<
@@ -44,37 +44,50 @@ export class WorkOrdersService {
       status,
       priority,
       sort = 'createdAt:desc',
+      search,
     } = query;
   
-    const where = {
+    const where: Prisma.WorkOrderWhereInput = {
       ...this.buildScope(user),
+  
       ...(status && { status }),
+  
       ...(priority && { priority }),
+  
+      ...(search?.trim() && {
+        OR: [
+          {
+            title: {
+              contains: search.trim(),
+              mode: 'insensitive',
+            },
+          },
+          {
+            description: {
+              contains: search.trim(),
+              mode: 'insensitive',
+            },
+          },
+        ],
+      }),
     };
   
-    const orderBy = (() => {
-      switch (sort) {
-        case 'createdAt:asc':
-          return {
-            createdAt: 'asc' as const,
-          };
+    const orderBy: Prisma.WorkOrderOrderByWithRelationInput =
+      (() => {
+        switch (sort) {
+          case 'createdAt:asc':
+            return { createdAt: 'asc' };
   
-        case 'priority:desc':
-          return {
-            priority: 'desc' as const,
-          };
+          case 'priority:desc':
+            return { priority: 'desc' };
   
-        case 'priority:asc':
-          return {
-            priority: 'asc' as const,
-          };
+          case 'priority:asc':
+            return { priority: 'asc' };
   
-        default:
-          return {
-            createdAt: 'desc' as const,
-          };
-      }
-    })();
+          default:
+            return { createdAt: 'desc' };
+        }
+      })();
   
     const [data, total] = await this.prisma.$transaction([
       this.prisma.workOrder.findMany({
@@ -114,15 +127,15 @@ export class WorkOrdersService {
   }
 
   async findOne(id: string, user: any) {
-    return this.prisma.workOrder.findFirst({
+    const workOrder = await this.prisma.workOrder.findFirst({
       where: {
         id,
-        ...this.buildScope(user)
+        ...this.buildScope(user),
       },
   
       include: {
         checklistItems: true,
-      
+  
         assignee: {
           select: {
             id: true,
@@ -130,7 +143,7 @@ export class WorkOrdersService {
             email: true,
           },
         },
-      
+  
         events: {
           include: {
             actor: {
@@ -141,8 +154,14 @@ export class WorkOrdersService {
             },
           },
         },
-      }
+      },
     });
+  
+    if (!workOrder) {
+      throw new NotFoundException();
+    }
+  
+    return workOrder;
   }
 
   async update(id: string, dto: UpdateWorkOrderDto,user: any) {

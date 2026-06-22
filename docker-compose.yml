@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fieldops-postgres
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fieldops
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: fieldops-backend
+
+    build:
+      context: ./backend
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fieldops?schema=public
+      JWT_SECRET: super-secret-key
+      PORT: 3000
+      WEBHOOK_URL: http://host.docker.internal:4000/webhook
+
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    container_name: fieldops-frontend
+
+    build:
+      context: ./frontend
+
+    depends_on:
+      - backend
+
+    ports:
+      - "5173:5173"
+
+    environment:
+      VITE_API_URL: http://localhost:3000
+
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:

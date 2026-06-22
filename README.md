@@ -4,6 +4,8 @@ API desenvolvida como parte do desafio técnico da FieldOps para gerenciamento d
 
 O objetivo do projeto é simular um cenário real de manutenção em campo, com diferentes perfis de acesso, regras de negócio, auditoria de eventos, concorrência otimista e integração via webhook.
 
+Obs: AS VARIÁVEIS GLOBAIS QUE ESTÃO DENTRO DOS ARQUIVOS .ENV SÃO SÓ PARA FIM DE TESTES.
+
 ## Tecnologias utilizadas
 
 * Node.js
@@ -186,6 +188,50 @@ Execute o seed:
 
 ```bash
 DATABASE_URL="postgresql://user:password@localhost:5432/fieldops_test" npx prisma db seed
+```
+
+## Executando com Docker
+
+Na raiz do projeto:
+
+```bash
+docker compose up --build
+```
+
+A API ficará disponível em:
+
+```text
+http://localhost:3000
+```
+
+O banco PostgreSQL ficará disponível em:
+
+```text
+localhost:5432
+```
+
+Para executar migrations manualmente:
+
+```bash
+docker compose exec backend pnpm prisma migrate deploy
+```
+
+Para executar seeds:
+
+```bash
+docker compose exec backend pnpm prisma db seed
+```
+
+Para parar os containers:
+
+```bash
+docker compose down
+```
+
+Para remover os volumes do banco:
+
+```bash
+docker compose down -v
 ```
 
 ## Usuários de seed
